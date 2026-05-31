@@ -36,7 +36,8 @@
 #include "SpriteManager.h"// Carregamento de sprites PNG do SD card
 #include "Avatar.h"       // Desenho da Neon (com ou sem sprite)
 #include "Version.h"      // Numero da versao do firmware
-#include "OTAUpdate.h"    // Atualizacao automatica pelo GitHub
+#include "OTAUpdate.h"
+#include "TelegramClient.h"  // Comunicacao via Telegram
 
 //=============================================================================
 // PINOS DO SD CARD (segundo a documentacao oficial do M5CardPuter)
@@ -79,7 +80,8 @@ DisplayManager  display(&config);  // Controle da tela
 AudioManager    audio(AUDIO_SAMPLE_RATE, AUDIO_BITS, AUDIO_CHANNELS); // Audio
 UIManager       ui(&display, &config);  // Interface grafica (menus)
 Avatar          avatar(&display, &sprites);  // Desenho da Neon
-OTAUpdateManager ota;         // Atualizacao OTA (Over-The-Air)
+OTAUpdateManager ota;
+TelegramClient  tg;              // Cliente Telegram
 
 //=============================================================================
 // VARIAVEIS GLOBAIS (estado do sistema)
@@ -205,6 +207,10 @@ void setup() {
             }
         }
         
+                // --- Inicializa Telegram ---
+        tg.setup(config.getTgToken(), config.getTgChatId());
+        tg.sendMessage("Neon Widget ligado!");
+        
         // --- Boot concluido: Neon esta ativa! ---
         avatar.setEmotion(AVATAR_LISTENING);  // Mostra Neon ouvindo
         delay(500);
@@ -245,6 +251,7 @@ void loop() {
     if (WiFi.isConnected() && millis() - lastPoll > POLL_INTERVAL_MS) {
         lastPoll = millis();
         pollServer();
+        checkTelegram();
     }
     
     // 4. Se esta gravando, continua gravando chunk por chunk
@@ -650,6 +657,45 @@ void goToSleep() {
     delay(100);
     esp_deep_sleep_start();  // Desliga de verdade
     // O codigo nunca passa daqui — o ESP32 reinicia quando acordar
+}
+
+//=============================================================================
+// TELEGRAM — Polling de respostas do Telegram
+//=============================================================================
+// A cada poll, pergunta ao Telegram se tem mensagens novas.
+// Quando chega uma resposta minha (Neon), mostra na tela com a reacao.
+//=============================================================================
+void checkTelegram() {
+    if (!tg.isReady()) return;
+    
+    String response = tg.pollResponse();
+    if (response.length() == 0) return;
+    
+    // A resposta vem no formato: "TEXTO ||| reacao"
+    // Ex: "Bom dia! ||| happy"
+    int sep = response.indexOf(" ||| ");
+    String text = response;
+    String reaction = "idle";
+    
+    if (sep > 0) {
+        text = response.substring(0, sep);
+        reaction = response.substring(sep + 5);
+        reaction.trim();
+    }
+    
+    // Acorda o display se tiver dormindo
+    if (sleeping) { display.wake(); sleeping = false; }
+    resetSleepTimer();
+    
+    // Mostra a resposta na tela
+    avatar.setLayout(AVATAR_LAYOUT_SPLIT);
+    avatar.setEmotionByName(reaction.c_str());
+    display.showText(text.c_str());
+    
+    Serial.printf("[TG] Resposta: %s (reacao: %s)\n", text.c_str(), reaction.c_str());
+    
+    // Se tiver som ativado, reproduz o texto em audio
+    // (usando o TTS do bridge, se disponivel)
 }
 
 //=============================================================================

@@ -1,12 +1,11 @@
 {
   "wifi": [
-    {"ssid": "MinhaRede_2G", "password": "senha_aqui"},
-    {"ssid": "WiFi_Visitas", "password": "senha_aqui"}
+    {"ssid": "MinhaRede_2G", "password": "senha_aqui"}
   ],
-  "server_host": "IP_DA_VPS_AQUI",
+  "server_host": "",
   "server_port": 8080,
-  "audio_endpoint": "/api/neon/audio",
-  "poll_endpoint": "/api/neon/poll",
   "sound_enabled": true,
-  "brightness": 100
+  "brightness": 100,
+  "bot_token": "token_do_bot_aqui",
+  "chat_id": "8829697706"
 }

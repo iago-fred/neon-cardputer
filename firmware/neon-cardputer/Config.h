@@ -25,18 +25,22 @@ private:
     char _pollEndpoint[128] = "/api/neon/poll";
     bool _soundEnabled = true;
     uint8_t _brightness = 100;
+    char _tgToken[64] = "";             // Token do bot Telegram (lido do SD)
+    char _tgChatId[32] = "8829697706";  // Seu chat ID no Telegram
     
 public:
     ConfigManager() {}
     
     void setDefaults() {
         _wifiNetworks.clear();
-        _serverHost[0] = '\0';  // Vazio — precisa configurar
+        _serverHost[0] = '\0';
         _serverPort = 8080;
         strcpy(_audioEndpoint, "/api/neon/audio");
         strcpy(_pollEndpoint, "/api/neon/poll");
         _soundEnabled = true;
         _brightness = 100;
+        _tgToken[0] = '\0';
+        strcpy(_tgChatId, "8829697706");
     }
     
     void load(JsonDocument& doc) {
@@ -58,6 +62,8 @@ public:
         strlcpy(_pollEndpoint, doc["poll_endpoint"] | _pollEndpoint, sizeof(_pollEndpoint));
         _soundEnabled = doc["sound_enabled"] | true;
         _brightness = doc["brightness"] | 100;
+        strlcpy(_tgToken, doc["bot_token"] | "", sizeof(_tgToken));
+        strlcpy(_tgChatId, doc["chat_id"] | "8829697706", sizeof(_tgChatId));
     }
     
     void save(JsonDocument& doc) {
@@ -74,6 +80,8 @@ public:
         doc["poll_endpoint"] = _pollEndpoint;
         doc["sound_enabled"] = _soundEnabled;
         doc["brightness"] = _brightness;
+        doc["bot_token"] = _tgToken;
+        doc["chat_id"] = _tgChatId;
     }
     
     void addWiFi(const char* ssid, const char* password) {
@@ -97,6 +105,8 @@ public:
     void setSoundEnabled(bool e) { _soundEnabled = e; }
     uint8_t getBrightness() { return _brightness; }
     void setBrightness(uint8_t b) { _brightness = b; }
+    const char* getTgToken() { return _tgToken; }
+    const char* getTgChatId() { return _tgChatId; }
 };
 
 #endif // CONFIG_H
