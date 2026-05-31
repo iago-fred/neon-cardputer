@@ -20,6 +20,15 @@
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
+#include <SD.h>
+#include <SPI.h>
+
+// Pinos do SD Card no M5CardPuter
+#define SD_CS    GPIO_NUM_12
+#define SD_MOSI  GPIO_NUM_38
+#define SD_MISO  GPIO_NUM_40
+#define SD_SCK   GPIO_NUM_39
+#define SD_CONFIG_PATH "/neon/config.json"
 #include "Config.h"
 #include "Display.h"
 #include "AudioManager.h"
@@ -101,12 +110,19 @@ void setup() {
     // Semente para random() (frases, etc)
     randomSeed(esp_random());
     
-    // Monta SPIFFS (config, assets)
-    if (!SPIFFS.begin(true)) {
-        Serial.println("❌ SPIFFS mount failed!");
+    // Monta SD card (prioridade) / SPIFFS (fallback)
+    SPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+    if (!SD.begin(SD_CS, SPI)) {
+        Serial.println("[SD] SD card nao encontrado, usando SPIFFS");
+    } else {
+        Serial.println("[SD] SD card montado");
     }
     
-    // Carrega configurações
+    if (!SPIFFS.begin(true)) {
+        Serial.println("[SPIFFS] SPIFFS mount failed!");
+    }
+    
+    // Carrega configurações (SD > SPIFFS > defaults)
     loadConfig();
     
     // Inicializa módulos
@@ -561,36 +577,64 @@ void goToSleep() {
 }
 
 // ============================================================
-// CONFIG (SPIFFS)
+// CONFIG (SD > SPIFFS > Defaults)
 // ============================================================
 void loadConfig() {
-    if (!SPIFFS.exists("/config.json")) {
-        Serial.println("⚠️ config.json não encontrado, usando defaults");
+    File file;
+    bool fromSD = false;
+    
+    // 1. Tenta SD card primeiro
+    if (SD.cardType() != CARD_NONE) {
+        if (SD.exists(SD_CONFIG_PATH)) {
+            file = SD.open(SD_CONFIG_PATH, FILE_READ);
+            if (file) {
+                fromSD = true;
+                Serial.printf("[Config] Lendo %s do SD\n", SD_CONFIG_PATH);
+            }
+        }
+    }
+    
+    // 2. Fallback: SPIFFS
+    if (!file) {
+        if (SPIFFS.exists("/config.json")) {
+            file = SPIFFS.open("/config.json", "r");
+            if (file) {
+                Serial.println("[Config] Lendo config do SPIFFS");
+            }
+        }
+    }
+    
+    // 3. Nada encontrado — defaults
+    if (!file) {
+        Serial.println("[Config] Nenhum config, usando defaults");
         config.setDefaults();
         saveConfig();
         return;
     }
-    
-    File file = SPIFFS.open("/config.json", "r");
-    if (!file) return;
     
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
     
     if (error) {
-        Serial.println("❌ Erro lendo config.json");
+        Serial.printf("[Config] Erro JSON: %s\n", error.c_str());
+        config.setDefaults();
         return;
     }
     
     config.load(doc);
-    Serial.println("✅ Config carregada");
+    Serial.printf("[Config] Carregada (%s)\n", fromSD ? "SD" : "SPIFFS");
 }
 
 void saveConfig() {
+    if (!SPIFFS.begin(false)) {
+        Serial.println("[Config] SPIFFS indisponivel");
+        return;
+    }
+    
     File file = SPIFFS.open("/config.json", "w");
     if (!file) {
-        Serial.println("❌ Erro salvando config.json");
+        Serial.println("[Config] Erro salvando");
         return;
     }
     
@@ -598,5 +642,5 @@ void saveConfig() {
     config.save(doc);
     serializeJson(doc, file);
     file.close();
-    Serial.println("✅ Config salva");
+    Serial.println("[Config] Salva no SPIFFS");
 }
