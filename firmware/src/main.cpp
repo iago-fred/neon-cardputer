@@ -90,6 +90,9 @@ void setup() {
     M5Cardputer.begin();
     M5Cardputer.Display.setRotation(1);
     
+    // Semente para random() (frases, etc)
+    randomSeed(esp_random());
+    
     // Monta SPIFFS (config, assets)
     if (!SPIFFS.begin(true)) {
         Serial.println("❌ SPIFFS mount failed!");
@@ -199,7 +202,10 @@ void loop() {
         display.wake();
     }
     
-    // 6. Atualiza UI
+    // 6. Reconexão WiFi automática
+    network.update();
+    
+    // 7. Atualiza UI
     ui.update();
     avatar.update();
     
@@ -294,6 +300,14 @@ void pushToTalk() {
     
     // Aloca buffer na PSRAM
     audioBuffer = (uint8_t*)ps_malloc(512 * 1024);  // 512KB
+    if (!audioBuffer) {
+        Serial.println("❌ Sem PSRAM!");
+        audioState = AUDIO_IDLE;
+        display.showRecording(false);
+        avatar.setEmotion(AVATAR_ERROR);
+        display.showStatus("Sem memoria");
+        return;
+    }
     audioBufferSize = 0;
     
     audio.startRecording(&audioBuffer, &audioBufferSize);

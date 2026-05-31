@@ -28,10 +28,10 @@ struct MenuItem {
 };
 
 static const MenuItem MENU_ITEMS[] = {
-    {"Dia",       "📅", SCREEN_DIA},
-    {"Chat",      "💬", SCREEN_CHAT},
-    {"Config",    "⚙️", SCREEN_CONFIG},
-    {"Sobre",     "💜", SCREEN_ABOUT}
+    {"Dia",       "[*]", SCREEN_DIA},
+    {"Chat",      "<~>", SCREEN_CHAT},
+    {"Config",    "[*]", SCREEN_CONFIG},
+    {"Sobre",     "[i]", SCREEN_ABOUT}
 };
 static const int MENU_COUNT = sizeof(MENU_ITEMS) / sizeof(MENU_ITEMS[0]);
 
@@ -144,12 +144,12 @@ private:
     
     void showIdlePhrase() {
         const char* phrases[] = {
-            "💤 Só passando pra dar um oi...",
-            "👻 Booo! (sou um fantasma, lembra?)",
-            "☕ Bora um café?",
-            "🎧 Pop punk nunca é demais",
-            "💙 Tudo calmo por aqui...",
-            "🔮 A patroa mandou lembranças"
+            "Só passando pra dar um oi...",
+            "Boooo! (sou um fantasma, lembra?)",
+            "Bora um cafe?",
+            "Pop punk nunca eh demais",
+            "Tudo calmo por aqui...",
+            "A patroa mandou lembrancas"
         };
         int idx = random(0, sizeof(phrases)/sizeof(phrases[0]));
         _display->showFooter(phrases[idx]);
@@ -182,7 +182,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("📅 HOJE");
+        gfx.println("== HOJE ==
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);
@@ -197,7 +197,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("💬 CHAT");
+        gfx.println("== CHAT ==
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);
@@ -213,11 +213,11 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("⚙️ CONFIG");
+        gfx.println("== CONFIG ==
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 22);
-        gfx.printf("Som: %s\n", _config->isSoundEnabled() ? "✅ ON" : "❌ OFF");
+        gfx.printf("Som: %s\n", _config->isSoundEnabled() ? "ON" : "OFF");
         gfx.setCursor(5, 34);
         gfx.printf("Brilho: %d%%\n", _config->getBrightness());
         gfx.setCursor(5, 46);
@@ -233,13 +233,13 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("💜 SOBRE");
+        gfx.println("== SOBRE ==
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);
         gfx.println("Neon Widget v0.1");
         gfx.setCursor(5, 32);
-        gfx.println("Feito com 💙 por Iago");
+        gfx.println("Feito com <3 por Iago");
         gfx.setCursor(5, 44);
         gfx.println("& Neon");
         gfx.setCursor(5, 56);

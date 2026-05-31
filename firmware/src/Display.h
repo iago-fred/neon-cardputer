@@ -110,7 +110,7 @@ public:
             gfx.fillRect(0, 100, 240, 20, _bgColor);
             gfx.setTextColor(TFT_RED, _bgColor);
             gfx.setCursor(5, 102);
-            gfx.println("🔴 GRAVANDO...");
+            gfx.println("** GRAVANDO **");
         } else {
             gfx.fillRect(0, 100, 240, 20, _bgColor);
         }
