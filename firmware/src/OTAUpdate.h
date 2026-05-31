@@ -174,8 +174,9 @@ public:
                 
                 Serial.printf("[OTA] ⏳ %d / %d bytes (%d%%)\n", 
                               written, contentLength, written * 100 / contentLength);
+            } else {
+                delay(1); // Evita CPU spin quando sem dados
             }
-            delay(1);
         }
         
         http.end();

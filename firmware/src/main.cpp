@@ -329,8 +329,15 @@ void pushToTalk() {
     
     Serial.printf("🎤 Gravado: %u bytes\n", audioBufferSize);
     
-    // Envia pra VPS
-    sendAudioToVPS();
+    // Só envia se gravou algo
+    if (audioBufferSize > 100) {
+        sendAudioToVPS();
+    } else {
+        display.showStatus("Nada gravado");
+        avatar.setEmotion(AVATAR_IDLE);
+        audioState = AUDIO_IDLE;
+        Serial.println("[Audio] Buffer vazio, nada enviado");
+    }
     
     // Libera buffer
     if (audioBuffer) {
