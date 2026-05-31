@@ -43,7 +43,8 @@ public:
         _wifiNetworks.clear();
         
         if (doc["wifi"].is<JsonArray>()) {
-            for (auto& net : doc["wifi"].as<JsonArray>()) {
+            JsonArray wifiArr = doc["wifi"].as<JsonArray>();
+            for (auto net : wifiArr) {
                 WiFiCredential cred;
                 strlcpy(cred.ssid, net["ssid"] | "", sizeof(cred.ssid));
                 strlcpy(cred.password, net["password"] | "", sizeof(cred.password));

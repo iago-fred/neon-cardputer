@@ -182,7 +182,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("== HOJE ==
+        gfx.println("== HOJE ==");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);
@@ -197,7 +197,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("== CHAT ==
+        gfx.println("== CHAT ==");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);
@@ -213,7 +213,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("== CONFIG ==
+        gfx.println("== CONFIG ==");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 22);
@@ -233,7 +233,7 @@ private:
         gfx.setTextSize(1);
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
         gfx.setCursor(5, 5);
-        gfx.println("== SOBRE ==
+        gfx.println("== SOBRE ==");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
         gfx.setCursor(5, 20);

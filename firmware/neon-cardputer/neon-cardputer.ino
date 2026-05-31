@@ -12,6 +12,10 @@
  * - WiFi auto-connect com lista de redes
  */
 
+// ⚠️ Se der erro de compilação com ESP32 Core 3.x, faça:
+//    Ferramentas → Placa → Gerenciador de Placas → ESP32 → versão 2.0.17
+//    (Core 3.x tem incompatibilidade com M5GFX/WiFiManager)
+
 #include <M5Cardputer.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -31,6 +35,14 @@
 // Constantes
 // ============================================================
 #define SLEEP_TIMEOUT_MS      30000   // 30s idle → sleep tela
+
+// Key codes (HID usage IDs) — fallback caso o header M5GFX não defina
+#ifndef KEY_ESC
+  #define KEY_ESC   0x29
+  #define KEY_ENTER 0x28
+  #define KEY_UP    0x52
+  #define KEY_DOWN  0x51
+#endif
 #define DEEP_SLEEP_TIMEOUT_MS 300000  // 5min idle → deep sleep
 #define POLL_INTERVAL_MS      5000    // ping VPS a cada 5s
 #define AUDIO_SAMPLE_RATE     16000
@@ -258,13 +270,22 @@ void setupWiFi() {
 // INPUT
 // ============================================================
 void handleKeys() {
+    M5Cardputer.Keyboard.update();
     if (M5Cardputer.Keyboard.isChange()) {
-        auto key = M5Cardputer.Keyboard.key();
+        auto key = M5Cardputer.Keyboard.keysState();
         
-        if (key.state == KEY_PRESSED) {
+        if (key.pressed) {
             resetSleepTimer();
             
-            uint8_t k = key.key_code;
+            // Pega a primeira tecla pressionada
+            uint8_t k = 0;
+            for (int i = 0; i < 6; i++) {
+                if (key.pressed_keys[i]) {
+                    k = key.pressed_keys[i];
+                    break;
+                }
+            }
+            if (k == 0) return;
             
             // ESC → volta / sai do menu
             if (k == KEY_ESC) {

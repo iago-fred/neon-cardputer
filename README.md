@@ -93,7 +93,12 @@ Usuário aperta Botão A
    - PSRAM: **OPI PSRAM**
    - Upload Speed: **921600**
 
-5. **Abrir e enviar:**
+5. **⚠️ Versão do ESP32 Core:**
+   - **Ferramentas > Placa > Gerenciador de Placas**
+   - Buscar `ESP32` e selecionar versão **2.0.17** (Core 3.x é incompatível com M5GFX)
+   - Clicar em **Instalar**
+
+6. **Abrir e enviar:**
    - Abrir `firmware/neon-cardputer/neon-cardputer.ino`
    - Conectar M5CardPuter via USB-C
    - Selecionar porta em **Ferramentas > Porta**

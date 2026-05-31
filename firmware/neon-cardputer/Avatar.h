@@ -194,9 +194,9 @@ private:
         // "Ondas sonoras"
         int mx = _x + 25;
         int my = _y + 10;
-        gfx.drawArc(mx, my, 5, 3, -45, 45, TFT_GREEN, TFT_BLACK);
-        gfx.drawArc(mx, my, 9, 7, -45, 45, TFT_GREEN, TFT_BLACK);
-        gfx.drawArc(mx, my, 13, 11, -45, 45, TFT_GREEN, TFT_BLACK);
+        gfx.drawArc(mx, my, 5, 3, -45, 45, TFT_GREEN);
+        gfx.drawArc(mx, my, 9, 7, -45, 45, TFT_GREEN);
+        gfx.drawArc(mx, my, 13, 11, -45, 45, TFT_GREEN);
     }
     
     void drawSleep() {

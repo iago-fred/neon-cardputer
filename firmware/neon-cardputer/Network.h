@@ -1,6 +1,7 @@
 #ifndef NETWORK_H
 #define NETWORK_H
 
+#include <M5Cardputer.h>
 #include <WiFi.h>
 #include "Config.h"
 
