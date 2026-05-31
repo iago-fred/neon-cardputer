@@ -62,17 +62,18 @@ Usuário aperta Botão A
 
 ## Dev Setup
 
-### Opção A — Arduino IDE (recomendado pra Windows)
+### Opção A — Arduino IDE (recomendado)
 
-1. **Instalar suporte ESP32:**
+1. **Instalar o M5Stack Board Manager (não o Espressif):**
    - **Arquivo > Preferências**
    - Em "URLs adicionais para gerenciadores de placas", colar:
      ```
-     https://espressif.github.io/arduino-esp32/package_esp32_index.json
+     https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_index.json
      ```
 
 2. **Instalar placa:** **Ferramentas > Placa > Gerenciador de Placas**
-   - Buscar `ESP32` → instalar **"ESP32 by Espressif Systems"**
+   - Buscar `M5Stack` → instalar **"M5Stack"** (versão >= 3.2.2)
+   - **Ferramentas > Placa > M5Stack > M5Cardputer**
 
 3. **Instalar bibliotecas (Ctrl+Shift+I):**
 
@@ -81,26 +82,12 @@ Usuário aperta Botão A
    | `M5CardPuter` by M5Stack | M5CardPuter |
    | `M5GFX` by M5Stack | M5GFX |
    | `ArduinoJson` by Benoit Blanchon | ArduinoJson |
-   | `WiFiManager` by tzapu | WiFiManager |
    | `ESP8266Audio` by Earle F. Philhower | ESP8266Audio |
 
-4. **Configurar a placa:**
-   - **Ferramentas > Placa > ESP32 Arduino → ESP32S3 Dev Module**
-   - USB CDC On Boot: **Enabled**
-   - Flash Mode: **QIO**
-   - Flash Size: **16MB (128Mb)**
-   - Partition Scheme: **16MB Flash (3MB APP/9.9MB FATFS)**
-   - PSRAM: **OPI PSRAM**
-   - Upload Speed: **921600**
-
-5. **⚠️ Versão do ESP32 Core:**
-   - **Ferramentas > Placa > Gerenciador de Placas**
-   - Buscar `ESP32` e selecionar versão **2.0.17** (Core 3.x é incompatível com M5GFX)
-   - Clicar em **Instalar**
-
-6. **Abrir e enviar:**
+4. **Abrir e enviar:**
    - Abrir `firmware/neon-cardputer/neon-cardputer.ino`
    - Conectar M5CardPuter via USB-C
+   - **Colocar em modo download:** switch OFF → segurar G0 → conectar USB → soltar G0
    - Selecionar porta em **Ferramentas > Porta**
    - Clicar **➡️ Upload**
 

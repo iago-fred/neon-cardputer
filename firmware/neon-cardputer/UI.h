@@ -90,6 +90,14 @@ public:
         }
     }
     
+    void cycleMenuPrev() {
+        if (_currentScreen == SCREEN_MENU) {
+            _menuSelection = (_menuSelection - 1 + MENU_COUNT) % MENU_COUNT;
+            _display->clear();
+            renderMenu();
+        }
+    }
+    
     void selectCurrent() {
         if (_currentScreen == SCREEN_MENU && _menuSelection < MENU_COUNT) {
             setScreen(MENU_ITEMS[_menuSelection].target);

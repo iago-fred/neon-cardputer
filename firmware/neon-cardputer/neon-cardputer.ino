@@ -12,8 +12,8 @@
  * - WiFi auto-connect com lista de redes
  */
 
-// ⚠️ Use ESP32 Core 2.0.17 (não 3.x) para compatibilidade.
-//    Ferramentas → Placa → Gerenciador de Placas → ESP32 2.0.17
+// Use M5Stack Board Manager: https://m5stack.oss-cn-shenzhen.aliyuncs.com/resource/arduino/package_m5stack_index.json
+// Placa: M5Cardputer  |  Board Manager >= 3.2.2
 
 #include <M5Cardputer.h>
 #include <WiFi.h>
@@ -23,9 +23,9 @@
 #include <SD.h>
 #include <SPI.h>
 
-// Pinos do SD Card no M5CardPuter
+// Pinos do SD Card no M5CardPuter (docs: CS=G12, MOSI=G14, MISO=G40, SCK=G39)
 #define SD_CS    GPIO_NUM_12
-#define SD_MOSI  GPIO_NUM_38
+#define SD_MOSI  GPIO_NUM_14
 #define SD_MISO  GPIO_NUM_40
 #define SD_SCK   GPIO_NUM_39
 #define SD_CONFIG_PATH "/neon/config.json"
@@ -210,33 +210,26 @@ void loop() {
 void handleKeys() {
     if (!M5Cardputer.Keyboard.isChange()) return;
     
-    static uint32_t pressStart = 0;
-    static bool keyWasHandled = false;
+    auto status = M5Cardputer.Keyboard.keysState();
+    if (M5Cardputer.Keyboard.isPressed() == 0) return;
     
-    if (M5Cardputer.Keyboard.isPressed()) {
-        // Tecla PRESSIONADA agora
-        pressStart = millis();
-        keyWasHandled = false;
-    } else {
-        // Tecla SOLTOU agora
-        if (keyWasHandled) return;
-        
-        uint32_t duration = millis() - pressStart;
-        keyWasHandled = true;
-        resetSleepTimer();
-        
-        if (duration > 500) {
-            // PRESSÃO LONGA (>500ms) = ESC/BACK
-            ui.goBack();
-        } else {
-            // PRESSÃO CURTA (<500ms)
-            if (ui.getScreen() == SCREEN_IDLE) {
-                ui.setScreen(SCREEN_MENU);
-            } else if (ui.getScreen() == SCREEN_MENU) {
-                ui.selectCurrent();  // Seleciona item do menu
-            } else {
-                ui.goBack();  // Volta ao menu
-            }
+    resetSleepTimer();
+    
+    if (status.del) { ui.goBack(); return; }
+    
+    if (status.enter) {
+        if (ui.getScreen() == SCREEN_IDLE) { ui.setScreen(SCREEN_MENU); }
+        else if (ui.getScreen() == SCREEN_MENU) { ui.selectCurrent(); }
+        else { ui.goBack(); }
+        return;
+    }
+    
+    for (auto i : status.word) {
+        if (i == 'w' || i == 'W') { ui.cycleMenuPrev(); }
+        else if (i == 's' || i == 'S') { ui.cycleMenu(); }
+        else if (i == ' ') {
+            if (ui.getScreen() == SCREEN_IDLE) { ui.setScreen(SCREEN_MENU); }
+            else if (ui.getScreen() == SCREEN_MENU) { ui.selectCurrent(); }
         }
     }
 }
