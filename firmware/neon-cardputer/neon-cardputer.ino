@@ -13,8 +13,6 @@
 //=============================================================================
 // M5Cardputer.h — biblioteca oficial do hardware (tela, teclado, speaker, etc)
 #include <M5Cardputer.h>
-// Network.h — necessario no Core 3.x pro WiFi funcionar (tipos de rede)
-#include <Network.h>
 // WiFi.h — controle de conexao WiFi (conectar, desconectar, status)
 #include <WiFi.h>
 // WiFiClient.h — cliente HTTP pra enviar dados pro servidor
