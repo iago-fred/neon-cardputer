@@ -16,6 +16,7 @@
 // Placa: M5Cardputer  |  Board Manager >= 3.2.2
 
 #include <M5Cardputer.h>
+#include <Network.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <ArduinoJson.h>
