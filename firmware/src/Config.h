@@ -19,8 +19,8 @@ struct WiFiCredential {
 class ConfigManager {
 private:
     std::vector<WiFiCredential> _wifiNetworks;
-    char _serverHost[64] = "il-separacao-python.onrender.com";
-    int  _serverPort = 443;
+    char _serverHost[64] = "";          // IP da VPS (configurado via SD ou WiFiManager)
+    int  _serverPort = 8080;             // Porta do bridge na VPS
     char _audioEndpoint[128] = "/api/neon/audio";
     char _pollEndpoint[128] = "/api/neon/poll";
     bool _soundEnabled = true;
@@ -31,8 +31,8 @@ public:
     
     void setDefaults() {
         _wifiNetworks.clear();
-        strcpy(_serverHost, "il-separacao-python.onrender.com");
-        _serverPort = 443;
+        _serverHost[0] = '\0';  // Vazio — precisa configurar
+        _serverPort = 8080;
         strcpy(_audioEndpoint, "/api/neon/audio");
         strcpy(_pollEndpoint, "/api/neon/poll");
         _soundEnabled = true;
