@@ -30,6 +30,11 @@ jobs:
             firmware/.pio
           key: ${{ runner.os }}-pio-${{ hashFiles('firmware/platformio.ini') }}
 
+      - name: 🔨 Symlink source files
+        run: |
+          cd firmware
+          ln -sf neon-cardputer src
+
       - name: 🔨 Build Firmware
         run: |
           cd firmware
@@ -38,8 +43,8 @@ jobs:
       - name: 📋 Rename Firmware
         run: |
           # Pega o .bin gerado e renomeia pra firmware.bin (nome padrão do OTA)
+          cp firmware/.pio/build/m5stack-cardputer-legacy/firmware.bin firmware.bin 2>/dev/null || \
           cp firmware/.pio/build/m5stack-cardputer/firmware.bin firmware.bin 2>/dev/null || \
-          cp firmware/.pio/build/m5stack-cardputer/firmware_merged.bin firmware.bin 2>/dev/null || \
           echo "::warning::Arquivo firmware.bin não encontrado — verificando build..."
 
       - name: ✅ Verificar build
