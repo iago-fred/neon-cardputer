@@ -296,7 +296,7 @@ void pushToTalk() {
     audioBuffer = (uint8_t*)ps_malloc(512 * 1024);  // 512KB
     audioBufferSize = 0;
     
-    audio.startRecording(audioBuffer, &audioBufferSize);
+    audio.startRecording(&audioBuffer, &audioBufferSize);
     
     // Aguarda botão soltar (loop blocking curto)
     uint32_t recordStart = millis();

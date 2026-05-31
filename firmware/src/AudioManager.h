@@ -18,7 +18,9 @@ private:
     bool _recording = false;
     bool _playing = false;
     
-    // Buffer e tamanho (referências externas)
+    // Buffer e tamanho (ponteiros para as variáveis globais em main.cpp)
+    // NOTA: startRecording recebe &audioBuffer e &audioBufferSize,
+    // então _bufferArmazena o endereço do ponteiro global, não de um parâmetro local.
     uint8_t** _buffer = nullptr;
     size_t* _bufferSize = nullptr;
     
@@ -33,8 +35,10 @@ public:
         //   Speaker: I2S_BCK=GPIO_NUM_34, I2S_WS=GPIO_NUM_35, I2S_DOUT=GPIO_NUM_37
     }
     
-    void startRecording(uint8_t* buffer, size_t* bufferSize) {
-        _buffer = &buffer;
+    // Inicia gravação — recebe &audioBuffer (ponteiro para o ponteiro global)
+    // e &audioBufferSize (ponteiro para o size_t global)
+    void startRecording(uint8_t** buffer, size_t* bufferSize) {
+        _buffer = buffer;        // Guarda endereço do ponteiro global
         _bufferSize = bufferSize;
         _recording = true;
         *_bufferSize = 0;
@@ -47,13 +51,12 @@ public:
         if (!_recording || !_buffer || !_bufferSize) return;
         
         // TODO: Ler dados reais do I2S mic
-        // Por enquanto, simula silêncio (preenche com zeros)
         // Na implementação real:
         //   size_t bytesRead = 0;
-        //   esp_i2s_read(I2S_NUM_0, *_buffer + *_bufferSize, 512, &bytesRead, portMAX_DELAY);
+        //   esp_i2s_read(I2S_NUM_0, (*_buffer) + (*_bufferSize), 512, &bytesRead, portMAX_DELAY);
         //   *_bufferSize += bytesRead;
         
-        delay(1); // Simula tempo de leitura
+        delay(1); // Simula tempo de leitura (remover na impl real)
     }
     
     void stopRecording() {
@@ -72,7 +75,6 @@ public:
         
         // TODO: Implementar streaming HTTP + I2S speaker
         // Usar ESP8266Audio ou AudioOutputI2S
-        // Por enquanto, simula duração
         delay(500);
         _playing = false;
     }

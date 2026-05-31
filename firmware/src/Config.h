@@ -52,7 +52,7 @@ public:
         }
         
         strlcpy(_serverHost, doc["server_host"] | _serverHost, sizeof(_serverHost));
-        _serverPort = doc["server_port"] | 443;
+        _serverPort = doc["server_port"] | 8080;
         strlcpy(_audioEndpoint, doc["audio_endpoint"] | _audioEndpoint, sizeof(_audioEndpoint));
         strlcpy(_pollEndpoint, doc["poll_endpoint"] | _pollEndpoint, sizeof(_pollEndpoint));
         _soundEnabled = doc["sound_enabled"] | true;
