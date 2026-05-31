@@ -56,16 +56,24 @@ public:
         File file = SD.open(path, FILE_READ);
         if (!file) return false;
 
+        // Le o arquivo inteiro pra memoria (sprites sao pequenos < 20KB)
+        size_t fileSize = file.size();
+        uint8_t* buf = (uint8_t*)ps_malloc(fileSize);
+        if (!buf) { file.close(); return false; }
+        
+        file.read(buf, fileSize);
+        file.close();
+
         auto& gfx = M5Cardputer.Display;
 
         if (maxW > 0 && maxH > 0) {
-            // Desenha com redimensionamento (PNG decoder nativo do M5GFX)
-            gfx.drawPng(file, x, y, maxW, maxH);
+            // Desenha com redimensionamento
+            gfx.drawPng(buf, fileSize, x, y, maxW, maxH);
         } else {
-            gfx.drawPng(file, x, y);
+            gfx.drawPng(buf, fileSize, x, y);
         }
 
-        file.close();
+        free(buf);
         return true;
     }
 
