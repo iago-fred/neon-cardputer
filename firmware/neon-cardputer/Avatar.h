@@ -3,6 +3,7 @@
 
 #include <M5Cardputer.h>
 #include "Display.h"
+#include "SpriteManager.h"
 
 // ============================================================
 // Emoções do Avatar Neon
@@ -20,42 +21,48 @@ enum AvatarEmotion {
 };
 
 const char* EMOTION_NAMES[AVATAR_COUNT] = {
-    "idle",
-    "happy",
-    "sad",
-    "surprised",
-    "thinking",
-    "listening",
-    "sleep",
-    "error"
+    "idle", "happy", "sad", "surprised",
+    "thinking", "listening", "sleep", "error"
 };
 
 // ============================================================
-// Avatar — Desenha a Neon na tela
+// Modos de layout
+// ============================================================
+enum AvatarLayout {
+    AVATAR_LAYOUT_FULL,   // Centro da tela, tamanho grande
+    AVATAR_LAYOUT_SPLIT   // Metade esquerda, tamanho reduzido
+};
+
+// ============================================================
+// Avatar — Desenha a Neon na tela (com suporte a sprites PNG)
 // ============================================================
 class Avatar {
 private:
     DisplayManager* _display;
+    SpriteManager*  _sprites;
     AvatarEmotion _currentEmotion = AVATAR_IDLE;
+    AvatarLayout  _layout = AVATAR_LAYOUT_FULL;
     bool _eyesOpen = true;
     float _breathePhase = 0.0f;
-    
-    // Posição do avatar na tela
-    int _x = 70;
-    int _y = 40;
-    
+
+    // Posição e tamanho (calculados dinamicamente)
+    int _cx = 70;   // centro x
+    int _cy = 40;   // centro y
+    float _scale = 1.0f;
+
     // Timing
     uint32_t _emotionStart = 0;
-    uint32_t _emotionDuration = 8000; // Volta ao idle após 8s
-    
+    uint32_t _emotionDuration = 8000;
+
 public:
-    Avatar(DisplayManager* display) : _display(display) {}
-    
+    Avatar(DisplayManager* display, SpriteManager* sprites)
+        : _display(display), _sprites(sprites) {}
+
     void setEmotion(AvatarEmotion emotion) {
         _currentEmotion = emotion;
         _emotionStart = millis();
     }
-    
+
     void setEmotionByName(const char* name) {
         for (int i = 0; i < AVATAR_COUNT; i++) {
             if (strcmp(EMOTION_NAMES[i], name) == 0) {
@@ -65,28 +72,48 @@ public:
         }
         setEmotion(AVATAR_IDLE);
     }
-    
+
+    void setLayout(AvatarLayout layout) {
+        _layout = layout;
+        if (layout == AVATAR_LAYOUT_FULL) {
+            _cx = 70;   // centro da tela
+            _cy = 45;
+            _scale = 1.0f;
+        } else {
+            _cx = 40;   // metade esquerda
+            _cy = 40;
+            _scale = 0.65f;
+        }
+    }
+
+    AvatarLayout getLayout() { return _layout; }
+
     void update() {
-        // Volta ao idle depois de um tempo
-        if (_currentEmotion != AVATAR_IDLE && 
+        if (_currentEmotion != AVATAR_IDLE &&
             millis() - _emotionStart > _emotionDuration) {
             _currentEmotion = AVATAR_IDLE;
         }
-        
-        // Piscada natural sem delay() bloqueante
-        // 4s aberto + 150ms fechado = ciclo de 4150ms
+
         uint32_t blinkCycle = millis() % 4150;
         _eyesOpen = blinkCycle < 4000;
-        
-        // Respiração (suave)
+
         if (_currentEmotion == AVATAR_IDLE || _currentEmotion == AVATAR_SLEEP) {
             _breathePhase += 0.02f;
         }
-        
+
         draw();
     }
-    
+
     void draw() {
+        // Tenta sprite PNG primeiro
+        const char* emoName = EMOTION_NAMES[_currentEmotion];
+        int spriteSize = (_layout == AVATAR_LAYOUT_FULL) ? 80 : 55;
+        if (_sprites->draw(emoName, _cx - spriteSize/2, _cy - spriteSize/2,
+                           spriteSize, spriteSize)) {
+            return;  // Sprite desenhado com sucesso
+        }
+
+        // Fallback: desenho programático
         switch (_currentEmotion) {
             case AVATAR_HAPPY:      drawHappy();      break;
             case AVATAR_SAD:        drawSad();        break;
@@ -99,132 +126,137 @@ public:
             default:                drawIdle();        break;
         }
     }
-    
+
 private:
+    int sx(int v) { return _cx + (int)((v - 70) * _scale); }
+    int sy(int v) { return _cy + (int)((v - 40) * _scale); }
+    int sr(int v) { return (int)(v * _scale); }
+
     void drawBaseGhost(int eyeY = 22, bool openEyes = true) {
         auto& gfx = M5Cardputer.Display;
-        int cx = _x, cy = _y;
-        
-        // Corpo fantasma (formato arredondado)
-        gfx.fillCircle(cx, cy + 15, 20, TFT_CYAN);
-        gfx.fillRect(cx - 20, cy + 15, 40, 18, TFT_CYAN);
-        gfx.fillTriangle(cx - 10, cy + 33, cx, cy + 42, cx + 10, cy + 33, TFT_CYAN);
-        gfx.fillTriangle(cx - 15, cy + 33, cx - 5, cy + 42, cx + 5, cy + 33, TFT_CYAN);
-        gfx.fillTriangle(cx + 5, cy + 33, cx + 15, cy + 42, cx + 20, cy + 33, TFT_CYAN);
-        
-        // Olhos
+        int cx = _cx, cy = _cy;
+        float s = _scale;
+
+        int r = sr(20);
+        gfx.fillCircle(cx, cy + sr(15), r, TFT_CYAN);
+        gfx.fillRect(cx - r, cy + sr(15), r * 2, sr(18), TFT_CYAN);
+
+        int triY = cy + sr(33);
+        int triB = cy + sr(42);
+        gfx.fillTriangle(cx - sr(10), triY, cx, triB, cx + sr(10), triY, TFT_CYAN);
+        gfx.fillTriangle(cx - sr(15), triY, cx - sr(5), triB, cx + sr(5), triY, TFT_CYAN);
+        gfx.fillTriangle(cx + sr(5), triY, cx + sr(15), triB, cx + sr(20), triY, TFT_CYAN);
+
+        int eY = cy + sr(eyeY - 22);
         if (openEyes) {
-            // Brilho nos olhos
-            gfx.fillCircle(cx - 7, eyeY, 3, TFT_WHITE);
-            gfx.fillCircle(cx + 7, eyeY, 3, TFT_WHITE);
-            gfx.fillCircle(cx - 7, eyeY, 1, TFT_BLACK);
-            gfx.fillCircle(cx + 7, eyeY, 1, TFT_BLACK);
+            int er = sr(3);
+            gfx.fillCircle(cx - sr(7), eY, max(er, 1), TFT_WHITE);
+            gfx.fillCircle(cx + sr(7), eY, max(er, 1), TFT_WHITE);
+            gfx.fillCircle(cx - sr(7), eY, max(sr(1), 1), TFT_BLACK);
+            gfx.fillCircle(cx + sr(7), eY, max(sr(1), 1), TFT_BLACK);
         } else {
-            gfx.drawLine(cx - 10, eyeY, cx - 4, eyeY, TFT_WHITE);
-            gfx.drawLine(cx + 4, eyeY, cx + 10, eyeY, TFT_WHITE);
+            gfx.drawLine(cx - sr(10), eY, cx - sr(4), eY, TFT_WHITE);
+            gfx.drawLine(cx + sr(4), eY, cx + sr(10), eY, TFT_WHITE);
         }
-        
-        // Touca (beanie)
-        gfx.fillRect(cx - 14, cy - 5, 28, 8, TFT_BLACK);
-        gfx.fillCircle(cx, cy - 1, 15, TFT_BLACK);
-        gfx.fillRect(cx - 15, cy - 5, 30, 3, TFT_DARKGREY);
+
+        // Touca proporcional
+        int tw = sr(28), th = sr(8);
+        gfx.fillRect(cx - tw/2, cy - sr(5), tw, th, TFT_BLACK);
+        gfx.fillCircle(cx, cy - sr(1), sr(15), TFT_BLACK);
+        gfx.fillRect(cx - sr(15), cy - sr(5), sr(30), sr(3), TFT_DARKGREY);
     }
-    
+
     void drawIdle() {
         auto& gfx = M5Cardputer.Display;
-        // Fundo da área
-        gfx.fillRect(_x - 30, _y - 20, 60, 70, _display->getBgColor());
-        
-        // Brilho suave (respiração)
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
+
         uint8_t glow = 30 + (sin(_breathePhase) * 20);
-        gfx.drawCircle(_x, _y + 15, 22, gfx.color565(0, glow, glow));
-        
+        gfx.drawCircle(_cx, _cy + sr(15), sr(22), gfx.color565(0, glow, glow));
         drawBaseGhost(22, _eyesOpen);
     }
-    
+
     void drawHappy() {
         auto& gfx = M5Cardputer.Display;
-        gfx.fillRect(_x - 30, _y - 20, 60, 70, _display->getBgColor());
-        
-        // Brilho extra (feliz)
-        gfx.drawCircle(_x, _y + 15, 25, TFT_YELLOW);
-        
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
+        gfx.drawCircle(_cx, _cy + sr(15), sr(25), TFT_YELLOW);
         drawBaseGhost(20, true);
-        
-        // Sorriso maior
-        gfx.drawCircle(_x, 35, 5, TFT_WHITE);
-        gfx.fillCircle(_x, 36, 4, TFT_CYAN);
+        gfx.drawCircle(_cx, _cy + sr(15), sr(5), TFT_WHITE);
+        gfx.fillCircle(_cx, _cy + sr(16), sr(4), TFT_CYAN);
     }
-    
+
     void drawSad() {
+        auto& gfx = M5Cardputer.Display;
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
         drawBaseGhost(24, true);
-        // Boca triste (arco invertido)
-        auto& gfx = M5Cardputer.Display;
-        gfx.drawLine(_x - 4, 38, _x + 4, 38, TFT_WHITE);
-        gfx.drawLine(_x - 4, 38, _x - 2, 40, TFT_WHITE);
-        gfx.drawLine(_x + 4, 38, _x + 2, 40, TFT_WHITE);
+        int my = _cy + sr(18);
+        gfx.drawLine(_cx - sr(4), my, _cx + sr(4), my, TFT_WHITE);
+        gfx.drawLine(_cx - sr(4), my, _cx - sr(2), my + sr(2), TFT_WHITE);
+        gfx.drawLine(_cx + sr(4), my, _cx + sr(2), my + sr(2), TFT_WHITE);
     }
-    
+
     void drawSurprised() {
+        auto& gfx = M5Cardputer.Display;
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
         drawBaseGhost(18, true);
-        // Olhos maiores
-        auto& gfx = M5Cardputer.Display;
-        gfx.fillCircle(_x - 7, 22, 5, TFT_WHITE);
-        gfx.fillCircle(_x + 7, 22, 5, TFT_WHITE);
-        gfx.fillCircle(_x - 7, 22, 2, TFT_BLACK);
-        gfx.fillCircle(_x + 7, 22, 2, TFT_BLACK);
-        // Boca "O"
-        gfx.drawCircle(_x, 38, 4, TFT_WHITE);
+        int er = sr(5);
+        gfx.fillCircle(_cx - sr(7), _cy + sr(2), max(er, 2), TFT_WHITE);
+        gfx.fillCircle(_cx + sr(7), _cy + sr(2), max(er, 2), TFT_WHITE);
+        gfx.fillCircle(_cx - sr(7), _cy + sr(2), max(sr(2), 1), TFT_BLACK);
+        gfx.fillCircle(_cx + sr(7), _cy + sr(2), max(sr(2), 1), TFT_BLACK);
+        gfx.drawCircle(_cx, _cy + sr(18), sr(4), TFT_WHITE);
     }
-    
+
     void drawThinking() {
-        drawBaseGhost(22, true);
-        // Bolha de pensamento
         auto& gfx = M5Cardputer.Display;
-        gfx.drawCircle(_x + 22, _y - 10, 3, TFT_WHITE);
-        gfx.drawCircle(_x + 28, _y - 16, 5, TFT_WHITE);
-        gfx.drawCircle(_x + 35, _y - 22, 10, TFT_WHITE);
-        gfx.fillCircle(_x + 35, _y - 22, 9, _display->getBgColor());
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
+        drawBaseGhost(22, true);
+        int bx = _cx + sr(22), by = _cy - sr(10);
+        gfx.drawCircle(bx, by, sr(3), TFT_WHITE);
+        gfx.drawCircle(bx + sr(6), by - sr(6), sr(5), TFT_WHITE);
+        gfx.drawCircle(bx + sr(13), by - sr(12), sr(10), TFT_WHITE);
+        gfx.fillCircle(bx + sr(13), by - sr(12), sr(9), _display->getBgColor());
     }
-    
+
     void drawListening() {
-        // Ícone de áudio ao lado
-        drawBaseGhost(22, true);
         auto& gfx = M5Cardputer.Display;
-        // "Ondas sonoras"
-        int mx = _x + 25;
-        int my = _y + 10;
-        gfx.drawArc(mx, my, 5, 3, -45, 45, TFT_GREEN);
-        gfx.drawArc(mx, my, 9, 7, -45, 45, TFT_GREEN);
-        gfx.drawArc(mx, my, 13, 11, -45, 45, TFT_GREEN);
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
+        drawBaseGhost(22, true);
+        int mx = _cx + sr(25), my = _cy + sr(10);
+        gfx.drawArc(mx, my, sr(5), sr(3), -45, 45, TFT_GREEN);
+        gfx.drawArc(mx, my, sr(9), sr(7), -45, 45, TFT_GREEN);
+        gfx.drawArc(mx, my, sr(13), sr(11), -45, 45, TFT_GREEN);
     }
-    
+
     void drawSleep() {
         auto& gfx = M5Cardputer.Display;
-        gfx.fillRect(_x - 30, _y - 20, 60, 70, _display->getBgColor());
-        
-        // Brilho fraco
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
         uint8_t dim = 10 + (sin(_breathePhase * 0.5f) * 5);
-        gfx.drawCircle(_x, _y + 15, 22, gfx.color565(0, dim, dim));
-        
+        gfx.drawCircle(_cx, _cy + sr(15), sr(22), gfx.color565(0, dim, dim));
         drawBaseGhost(22, false);
-        // "Z z z"
-        gfx.drawChar('Z', _x + 22, _y - 8, 1);
-        gfx.drawChar('z', _x + 28, _y - 2, 1);
-        gfx.drawChar('z', _x + 34, _y + 4, 1);
+        int zx = _cx + sr(22), zy = _cy - sr(8);
+        gfx.drawChar('Z', zx, zy, 1);
+        gfx.drawChar('z', zx + sr(6), zy + sr(6), 1);
+        gfx.drawChar('z', zx + sr(12), zy + sr(12), 1);
     }
-    
+
     void drawError() {
         auto& gfx = M5Cardputer.Display;
-        // Tom avermelhado
-        gfx.drawCircle(_x, _y + 15, 23, TFT_RED);
-        gfx.drawCircle(_x, _y + 15, 24, TFT_RED);
-        
-        // Olhos "X X"
-        gfx.drawLine(_x - 11, 19, _x - 3, 27, TFT_RED);
-        gfx.drawLine(_x - 3, 19, _x - 11, 27, TFT_RED);
-        gfx.drawLine(_x + 3, 19, _x + 11, 27, TFT_RED);
-        gfx.drawLine(_x + 11, 19, _x + 3, 27, TFT_RED);
+        int r = (_layout == AVATAR_LAYOUT_FULL) ? 60 : 50;
+        gfx.fillRect(_cx - r, _cy - r, r * 2, r * 2, _display->getBgColor());
+        gfx.drawCircle(_cx, _cy + sr(15), sr(23), TFT_RED);
+        gfx.drawCircle(_cx, _cy + sr(15), sr(24), TFT_RED);
+        int ex1 = _cy + sr(19), ex2 = _cy + sr(27);
+        gfx.drawLine(_cx - sr(11), ex1, _cx - sr(3), ex2, TFT_RED);
+        gfx.drawLine(_cx - sr(3), ex1, _cx - sr(11), ex2, TFT_RED);
+        gfx.drawLine(_cx + sr(3), ex1, _cx + sr(11), ex2, TFT_RED);
+        gfx.drawLine(_cx + sr(11), ex1, _cx + sr(3), ex2, TFT_RED);
     }
 };
 

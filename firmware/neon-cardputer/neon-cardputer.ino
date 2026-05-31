@@ -35,6 +35,7 @@
 #include "Display.h"
 #include "AudioManager.h"
 #include "UI.h"
+#include "SpriteManager.h"
 #include "Avatar.h"
 #include "Version.h"
 #include "OTAUpdate.h"
@@ -53,11 +54,12 @@
 // Globais
 // ============================================================
 ConfigManager   config;
+SpriteManager   sprites;
 DisplayManager  display(&config);
 AudioManager    audio(AUDIO_SAMPLE_RATE, AUDIO_BITS, AUDIO_CHANNELS);
 
 UIManager       ui(&display, &config);
-Avatar          avatar(&display);
+Avatar          avatar(&display, &sprites);
 OTAUpdateManager ota;
 
 static uint32_t lastActivity = 0;
@@ -112,6 +114,8 @@ void setup() {
     }
     
     loadConfig();
+    
+    sprites.init();
     
     display.init();
     audio.init();
@@ -219,6 +223,13 @@ void handleKeys() {
     if (M5Cardputer.Keyboard.isPressed() == 0) return;
     
     resetSleepTimer();
+    
+    // Alterna layout conforme a tela
+    if (ui.getScreen() != SCREEN_IDLE) {
+        avatar.setLayout(AVATAR_LAYOUT_SPLIT);
+    } else {
+        avatar.setLayout(AVATAR_LAYOUT_FULL);
+    }
     
     if (status.del) { ui.goBack(); return; }
     

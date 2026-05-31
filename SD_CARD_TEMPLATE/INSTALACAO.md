@@ -5,49 +5,57 @@
 ```
 SD CARD/
 └── neon/
-    └── config.json    ← OBRIGATÓRIO: configuração do widget
+    ├── config.json          ← Configuração do widget (WiFi, servidor)
+    └── sprites/             ← PNGs do avatar (opcional)
+        ├── idle.png
+        ├── happy.png
+        ├── sad.png
+        ├── surprised.png
+        ├── thinking.png
+        ├── listening.png
+        ├── sleep.png
+        └── error.png
 ```
 
-## Criando o config.json
-
-Coloca num cartão microSD, formata como FAT32, e cria:
-
-```
-neon/
-└── config.json
-```
-
-Conteúdo do `config.json`:
+## config.json
 
 ```json
 {
   "wifi": [
     {"ssid": "MinhaRede", "password": "***"}
   ],
-  "server_host": "187.127.243.164",
+  "server_host": "IP_DA_VPS_AQUI",
   "server_port": 8080,
   "sound_enabled": true,
   "brightness": 100
 }
 ```
 
-### Campos
+## Sprites (PNG)
 
-| Campo | Obrigatório | Descrição |
-|---|---|---|
-| `wifi` | ✅ | Lista de redes WiFi (tenta cada uma) |
-| `server_host` | ✅ | IP da VPS onde o bridge roda |
-| `server_port` | ✅ | Porta do bridge (8080) |
-| `audio_endpoint` | ❌ | Rota p/ enviar áudio (default: /api/neon/audio) |
-| `poll_endpoint` | ❌ | Rota p/ notificações (default: /api/neon/poll) |
-| `sound_enabled` | ❌ | Som ligado (default: true) |
-| `brightness` | ❌ | Brilho da tela 0-100 (default: 100) |
+Os sprites do avatar são carregados do SD quando disponíveis.
+Se não encontrar, usa o desenho programático (nativo).
 
-### Prioridade de leitura
+**Formato recomendado:**
+- Tamanho: 80×80 pixels (full) ou 55×55 (split)
+- PNG com fundo transparente
+- Nome: `{emoção}.png` (tudo minúsculo)
 
-1. ✅ SD card (`/neon/config.json`) — se não achar, vai pro...
-2. ✅ SPIFFS (`/config.json`) — se não achar, usa...
-3. ✅ Defaults (WiFi vazio, sem servidor)
+**Emoções:**
 
-> ⚠️ **Nunca comitar o IP real da VPS no GitHub!**
-> Use `IP_DA_VPS_AQUI` no template público, coloque o IP real só no SD físico.
+| Arquivo | Emoção |
+|---|---|
+| `idle.png` | Neutro, padrão |
+| `happy.png` | Feliz |
+| `sad.png` | Triste |
+| `surprised.png` | Surpreso |
+| `thinking.png` | Pensando |
+| `listening.png` | Ouvindo áudio |
+| `sleep.png` | Dormindo |
+| `error.png` | Erro |
+
+## Prioridade de leitura
+
+1. ✅ SD card (`/neon/config.json`) — configuração
+2. ✅ SPIFFS — fallback da config
+3. ✅ Defaults — WiFi vazio, sem servidor

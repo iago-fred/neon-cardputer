@@ -171,92 +171,90 @@ private:
         gfx.setTextSize(1);
         
         int y = 5;
+        int leftX = 115;  // metade direita
+        
         for (int i = 0; i < MENU_COUNT; i++) {
             if (i == _menuSelection) {
-                gfx.fillRect(0, y, 240, 25, TFT_DARKGREY);
+                gfx.fillRect(leftX, y, 125, 25, TFT_DARKGREY);
                 gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
             } else {
                 gfx.setTextColor(TFT_LIGHTGREY, _display->getBgColor());
             }
             
-            gfx.setCursor(10, y + 5);
+            gfx.setCursor(leftX + 8, y + 5);
             gfx.printf("%s  %s", MENU_ITEMS[i].icon, MENU_ITEMS[i].label);
             y += 30;
         }
         
-        // Instruções no rodapé
-        _display->showFooter("tecla = seleciona  longa = volta");
+        _display->showFooter("W/S navega  ENTER abre");
     }
     
     void renderDia() {
         auto& gfx = M5Cardputer.Display;
         gfx.setTextSize(1);
+        int leftX = 115;
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
-        gfx.setCursor(5, 5);
-        gfx.println("== HOJE ==");
+        gfx.setCursor(leftX + 5, 5);
+        gfx.println("HOJE");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
-        gfx.setCursor(5, 20);
+        gfx.setCursor(leftX + 5, 20);
         gfx.println("Carregando...");
         
-        // Aqui entraria dados do Calendar + clima via polling
-        _display->showFooter("ESC volta");
+        _display->showFooter("DEL volta");
     }
     
     void renderChat() {
         auto& gfx = M5Cardputer.Display;
         gfx.setTextSize(1);
+        int leftX = 115;
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
-        gfx.setCursor(5, 5);
-        gfx.println("== CHAT ==");
+        gfx.setCursor(leftX + 5, 5);
+        gfx.println("CHAT");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
-        gfx.setCursor(5, 20);
-        gfx.println("Pressione o botao");
-        gfx.setCursor(5, 32);
-        gfx.println("para falar comigo!");
+        gfx.setCursor(leftX + 5, 20);
+        gfx.println("Botao A = falar");
         
-        _display->showFooter("Botao A = gravar  ESC volta");
+        _display->showFooter("DEL volta");
     }
     
     void renderConfig() {
         auto& gfx = M5Cardputer.Display;
         gfx.setTextSize(1);
+        int leftX = 115;
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
-        gfx.setCursor(5, 5);
-        gfx.println("== CONFIG ==");
+        gfx.setCursor(leftX + 5, 5);
+        gfx.println("CONFIG");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
-        gfx.setCursor(5, 22);
+        gfx.setCursor(leftX + 5, 22);
         gfx.printf("Som: %s\n", _config->isSoundEnabled() ? "ON" : "OFF");
-        gfx.setCursor(5, 34);
+        gfx.setCursor(leftX + 5, 34);
         gfx.printf("Brilho: %d%%\n", _config->getBrightness());
-        gfx.setCursor(5, 46);
-        gfx.printf("WiFi: %s\n", WiFi.isConnected() ? WiFi.SSID().c_str() : "desconectado");
-        gfx.setCursor(5, 58);
-        gfx.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+        gfx.setCursor(leftX + 5, 46);
+        gfx.printf("WiFi: %s\n", WiFi.isConnected() ? WiFi.SSID().c_str() : "-");
         
-        _display->showFooter("ESC volta");
+        _display->showFooter("DEL volta");
     }
     
     void renderAbout() {
         auto& gfx = M5Cardputer.Display;
         gfx.setTextSize(1);
+        int leftX = 115;
         gfx.setTextColor(TFT_CYAN, _display->getBgColor());
-        gfx.setCursor(5, 5);
-        gfx.println("== SOBRE ==");
+        gfx.setCursor(leftX + 5, 5);
+        gfx.println("NEON v0.2");
         
         gfx.setTextColor(TFT_WHITE, _display->getBgColor());
-        gfx.setCursor(5, 20);
-        gfx.println("Neon Widget v0.1");
-        gfx.setCursor(5, 32);
-        gfx.println("Feito com <3 por Iago");
-        gfx.setCursor(5, 44);
-        gfx.println("& Neon");
-        gfx.setCursor(5, 56);
-        gfx.println("✨ M5CardPuter + OpenClaw");
+        gfx.setCursor(leftX + 5, 22);
+        gfx.println("Neon Widget");
+        gfx.setCursor(leftX + 5, 34);
+        gfx.println("Iago + Neon");
+        gfx.setCursor(leftX + 5, 46);
+        gfx.println("M5CardPuter");
         
-        _display->showFooter("ESC volta");
+        _display->showFooter("DEL volta");
     }
 };
 
