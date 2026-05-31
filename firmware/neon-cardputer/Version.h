@@ -5,10 +5,10 @@
 // Versão do Firmware
 // ============================================================
 #define FIRMWARE_VERSION_MAJOR 0
-#define FIRMWARE_VERSION_MINOR 2
+#define FIRMWARE_VERSION_MINOR 3
 #define FIRMWARE_VERSION_PATCH 0
 
-#define FIRMWARE_VERSION_STR  "0.2.0"
+#define FIRMWARE_VERSION_STR  "0.3.0"
 #define FIRMWARE_NAME         "Neon Widget"
 #define FIRMWARE_AUTHOR       "Iago & Neon"
 
