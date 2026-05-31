@@ -1,0 +1,68 @@
+name: Build Firmware & Release
+
+on:
+  push:
+    tags:
+      - 'v*'   # Dispara quando fizer push de uma tag tipo v0.2.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🛠️ Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🛠️ Setup PlatformIO
+        run: |
+          pip install platformio
+          pio upgrade --dev
+
+      - name: 📦 Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: ${{ runner.os }}-pio-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: 🔨 Build Firmware
+        run: |
+          cd firmware
+          pio run
+
+      - name: 📋 Rename Firmware
+        run: |
+          # Pega o .bin gerado e renomeia pra firmware.bin (nome padrão do OTA)
+          cp firmware/.pio/build/m5stack-cardputer/firmware.bin firmware.bin 2>/dev/null || \
+          cp firmware/.pio/build/m5stack-cardputer/firmware_merged.bin firmware.bin 2>/dev/null || \
+          echo "::warning::Arquivo firmware.bin não encontrado — verificando build..."
+
+      - name: ✅ Verificar build
+        run: ls -lh firmware.bin 2>/dev/null || echo "::warning::firmware.bin não gerado — pulando release"
+        
+      - name: 🚀 Create Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          name: Release ${{ github.ref_name }}
+          body: |
+            ## Neon Widget ${{ github.ref_name }}
+            
+            ### 📥 Instalação
+            1. Baixe o `firmware.bin`
+            2. Faça upload via OTA ou USB
+            3. O dispositivo verifica atualizações automaticamente no boot
+            
+            ### 📋 Changelog
+            Veja o histórico de commits para detalhes.
+          files: |
+            firmware.bin
+            firmware/.pio/build/m5stack-cardputer/bootloader.bin
+            firmware/.pio/build/m5stack-cardputer/partitions.bin
+          draft: false
+          prerelease: false

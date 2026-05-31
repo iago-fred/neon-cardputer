@@ -22,6 +22,8 @@
 #include "Network.h"
 #include "UI.h"
 #include "Avatar.h"
+#include "Version.h"
+#include "OTAUpdate.h"
 
 // ============================================================
 // Constantes
@@ -42,6 +44,7 @@ AudioManager    audio(AUDIO_SAMPLE_RATE, AUDIO_BITS, AUDIO_CHANNELS);
 NetworkManager  network(&config);
 UIManager       ui(&display, &config);
 Avatar          avatar(&display);
+OTAUpdateManager ota;
 
 // Timers
 static uint32_t lastActivity = 0;
@@ -108,7 +111,37 @@ void setup() {
     if (WiFi.isConnected()) {
         display.showStatus("Conectado! ✓");
         delay(500);
+        
+        // Verifica atualizações OTA
+        display.showStatus("Verificando atualizacoes...");
+        ota.setProgressCallback([](int progress, int total) {
+            char buf[32];
+            snprintf(buf, sizeof(buf), "OTA: %d%%", progress);
+            M5Cardputer.Display.fillRect(0, 105, 240, 30, TFT_BLACK);
+            M5Cardputer.Display.setCursor(5, 110);
+            M5Cardputer.Display.printf("OTA: %d%%", progress);
+            
+            // Barra de progresso
+            int barWidth = (progress * 200) / total;
+            M5Cardputer.Display.drawRect(20, 125, 200, 8, TFT_CYAN);
+            M5Cardputer.Display.fillRect(22, 127, barWidth, 4, TFT_GREEN);
+        });
+        
+        if (ota.checkForUpdate()) {
+            display.showStatus("Nova versao: " + ota.getLatestTag());
+            delay(2000);
+            
+            display.showStatus("Atualizando firmware...");
+            if (!ota.applyUpdate()) {
+                display.showStatus("OTA falhou!");
+                delay(2000);
+            }
+        } else {
+            Serial.println("[OTA] Firmware atualizado");
+        }
+        
         avatar.setEmotion(AVATAR_HAPPY);
+        delay(500);
     } else {
         display.showStatus("WiFi: off");
         avatar.setEmotion(AVATAR_SAD);
