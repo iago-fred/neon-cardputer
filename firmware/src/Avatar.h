@@ -37,8 +37,6 @@ class Avatar {
 private:
     DisplayManager* _display;
     AvatarEmotion _currentEmotion = AVATAR_IDLE;
-    AvatarEmotion _targetEmotion = AVATAR_IDLE;
-    uint32_t _lastBlink = 0;
     bool _eyesOpen = true;
     float _breathePhase = 0.0f;
     
@@ -75,18 +73,10 @@ public:
             _currentEmotion = AVATAR_IDLE;
         }
         
-        // Piscar a cada 4s
-        if (millis() - _lastBlink > 4000) {
-            _eyesOpen = !_eyesOpen;
-            _lastBlink = millis();
-            if (!_eyesOpen) {
-                // Fecha por 150ms
-                _eyesOpen = false;
-                delay(150); // Blocking curto pra piscada
-                _eyesOpen = true;
-                _lastBlink = millis();
-            }
-        }
+        // Piscada natural sem delay() bloqueante
+        // 4s aberto + 150ms fechado = ciclo de 4150ms
+        uint32_t blinkCycle = millis() % 4150;
+        _eyesOpen = blinkCycle < 4000;
         
         // Respiração (suave)
         if (_currentEmotion == AVATAR_IDLE || _currentEmotion == AVATAR_SLEEP) {
@@ -111,7 +101,7 @@ public:
     }
     
 private:
-    void drawBaseGhost(int eyeY = 22, int mouthY = 34, bool openEyes = true) {
+    void drawBaseGhost(int eyeY = 22, bool openEyes = true) {
         auto& gfx = M5Cardputer.Display;
         int cx = _x, cy = _y;
         
@@ -149,7 +139,7 @@ private:
         uint8_t glow = 30 + (sin(_breathePhase) * 20);
         gfx.drawCircle(_x, _y + 15, 22, gfx.color565(0, glow, glow));
         
-        drawBaseGhost(22, 34, _eyesOpen && (millis() % 4000 < 3850));
+        drawBaseGhost(22, _eyesOpen);
     }
     
     void drawHappy() {
@@ -159,7 +149,7 @@ private:
         // Brilho extra (feliz)
         gfx.drawCircle(_x, _y + 15, 25, TFT_YELLOW);
         
-        drawBaseGhost(20, 32, true);
+        drawBaseGhost(20, true);
         
         // Sorriso maior
         gfx.drawCircle(_x, 35, 5, TFT_WHITE);
@@ -167,7 +157,7 @@ private:
     }
     
     void drawSad() {
-        drawBaseGhost(24, 36, true);
+        drawBaseGhost(24, true);
         // Boca triste (arco invertido)
         auto& gfx = M5Cardputer.Display;
         gfx.drawLine(_x - 4, 38, _x + 4, 38, TFT_WHITE);
@@ -176,7 +166,7 @@ private:
     }
     
     void drawSurprised() {
-        drawBaseGhost(18, 38, true);
+        drawBaseGhost(18, true);
         // Olhos maiores
         auto& gfx = M5Cardputer.Display;
         gfx.fillCircle(_x - 7, 22, 5, TFT_WHITE);
@@ -188,7 +178,7 @@ private:
     }
     
     void drawThinking() {
-        drawBaseGhost(22, 34, true);
+        drawBaseGhost(22, true);
         // Bolha de pensamento
         auto& gfx = M5Cardputer.Display;
         gfx.drawCircle(_x + 22, _y - 10, 3, TFT_WHITE);
@@ -199,7 +189,7 @@ private:
     
     void drawListening() {
         // Ícone de áudio ao lado
-        drawBaseGhost(22, 34, true);
+        drawBaseGhost(22, true);
         auto& gfx = M5Cardputer.Display;
         // "Ondas sonoras"
         int mx = _x + 25;
@@ -217,7 +207,7 @@ private:
         uint8_t dim = 10 + (sin(_breathePhase * 0.5f) * 5);
         gfx.drawCircle(_x, _y + 15, 22, gfx.color565(0, dim, dim));
         
-        drawBaseGhost(22, 34, false);
+        drawBaseGhost(22, false);
         // "Z z z"
         gfx.drawChar('Z', _x + 22, _y - 8, 1);
         gfx.drawChar('z', _x + 28, _y - 2, 1);

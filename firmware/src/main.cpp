@@ -14,6 +14,8 @@
 
 #include <M5Cardputer.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiManager.h>
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
 #include "Config.h"
@@ -128,7 +130,7 @@ void setup() {
         });
         
         if (ota.checkForUpdate()) {
-            display.showStatus("Nova versao: " + ota.getLatestTag());
+            display.showStatus(("Nova versao: " + ota.getLatestTag()).c_str());
             delay(2000);
             
             display.showStatus("Atualizando firmware...");
@@ -334,8 +336,7 @@ void sendAudioToVPS() {
         return;
     }
     
-    WiFiClientSecure client;
-    client.setInsecure(); // Para HTTPS sem certificado fixo
+    WiFiClient client; // HTTP (bridge roda na porta 8080 sem HTTPS)
     
     const char* host = config.getServerHost();
     int port = config.getServerPort();
@@ -343,36 +344,51 @@ void sendAudioToVPS() {
     if (!client.connect(host, port)) {
         Serial.println("❌ Conexão falhou!");
         avatar.setEmotion(AVATAR_ERROR);
-        display.showStatus("Erro conexão");
+        display.showStatus("Erro conexao");
         audioState = AUDIO_IDLE;
         return;
     }
     
-    // Monta multipart form com WAV
+    // WAV header + buffer de áudio
+    size_t wavSize = audioBufferSize + 44;
+    uint8_t* wavData = (uint8_t*)ps_malloc(wavSize);
+    if (!wavData) {
+        Serial.println("❌ Sem PSRAM para WAV");
+        client.stop();
+        audioState = AUDIO_IDLE;
+        return;
+    }
+    
+    // Monta header WAV
+    AudioManager::buildWavHeader(wavData, wavSize, audioBufferSize, AUDIO_SAMPLE_RATE);
+    memcpy(wavData + 44, audioBuffer, audioBufferSize);
+    
+    // HTTP multipart
     String boundary = "----NeonAudioBoundary";
     String bodyStart = "--" + boundary + "\r\n"
         "Content-Disposition: form-data; name=\"audio\"; filename=\"recording.wav\"\r\n"
         "Content-Type: audio/wav\r\n\r\n";
     String bodyEnd = "\r\n--" + boundary + "--\r\n";
     
-    size_t contentLength = bodyStart.length() + audioBufferSize + bodyEnd.length();
+    size_t contentLength = bodyStart.length() + wavSize + bodyEnd.length();
     
-    client.println("POST " + String(config.getAudioEndpoint()) + " HTTP/1.1");
-    client.println("Host: " + String(host));
-    client.println("Content-Type: multipart/form-data; boundary=" + boundary);
-    client.println("Content-Length: " + String(contentLength));
+    client.println(String("POST ") + config.getAudioEndpoint() + " HTTP/1.1");
+    client.println(String("Host: ") + host);
+    client.println(String("Content-Type: multipart/form-data; boundary=") + boundary);
+    client.println(String("Content-Length: ") + contentLength);
     client.println("Connection: close");
     client.println();
     client.print(bodyStart);
     
-    // Envia áudio em chunks
+    // Envia WAV completo
     size_t sent = 0;
-    while (sent < audioBufferSize) {
-        size_t chunk = min((size_t)1024, audioBufferSize - sent);
-        client.write(audioBuffer + sent, chunk);
+    while (sent < wavSize) {
+        size_t chunk = min((size_t)1024, wavSize - sent);
+        client.write(wavData + sent, chunk);
         sent += chunk;
     }
     
+    free(wavData);
     client.print(bodyEnd);
     
     // Aguarda resposta
@@ -435,15 +451,14 @@ void sendAudioToVPS() {
 // ============================================================
 void pollServer() {
     // Verifica se há notificações novas na VPS
-    WiFiClientSecure client;
-    client.setInsecure();
+    WiFiClient client;
     
     if (!client.connect(config.getServerHost(), config.getServerPort())) {
         return;
     }
     
-    client.println("GET " + String(config.getPollEndpoint()) + " HTTP/1.1");
-    client.println("Host: " + String(config.getServerHost()));
+    client.println(String("GET ") + config.getPollEndpoint() + " HTTP/1.1");
+    client.println(String("Host: ") + config.getServerHost());
     client.println("Connection: close");
     client.println();
     
