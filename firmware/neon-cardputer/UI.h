@@ -82,6 +82,20 @@ public:
         }
     }
     
+    void cycleMenu() {
+        if (_currentScreen == SCREEN_MENU) {
+            _menuSelection = (_menuSelection + 1) % MENU_COUNT;
+            _display->clear();
+            renderMenu();
+        }
+    }
+    
+    void selectCurrent() {
+        if (_currentScreen == SCREEN_MENU && _menuSelection < MENU_COUNT) {
+            setScreen(MENU_ITEMS[_menuSelection].target);
+        }
+    }
+    
     void handleKey(uint8_t key) {
         switch (_currentScreen) {
             case SCREEN_MENU:
@@ -123,19 +137,8 @@ public:
     
 private:
     void handleMenuKey(uint8_t key) {
-        if (key == KEY_ENTER || key == ' ') {
-            if (_menuSelection >= 0 && _menuSelection < MENU_COUNT) {
-                setScreen(MENU_ITEMS[_menuSelection].target);
-            }
-        } else if (key == KEY_UP || key == 'w') {
-            _menuSelection = (_menuSelection - 1 + MENU_COUNT) % MENU_COUNT;
-            _display->clear();
-            renderMenu();
-        } else if (key == KEY_DOWN || key == 's') {
-            _menuSelection = (_menuSelection + 1) % MENU_COUNT;
-            _display->clear();
-            renderMenu();
-        }
+        // Navegação simplificada: o loop principal gerencia
+        // O handleKey é mantido para compatibilidade futura
     }
     
     void renderIdle() {
@@ -174,7 +177,7 @@ private:
         }
         
         // Instruções no rodapé
-        _display->showFooter("↑↓ navega  ENTER seleciona  ESC volta");
+        _display->showFooter("tecla = seleciona  longa = volta");
     }
     
     void renderDia() {
