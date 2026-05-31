@@ -19,7 +19,7 @@ struct WiFiCredential {
 class ConfigManager {
 private:
     std::vector<WiFiCredential> _wifiNetworks;
-    char _serverHost[64] = "";          // IP da VPS (configurado via SD ou WiFiManager)
+    char _serverHost[64] = "";          // IP/URL da VPS onde o bridge roda (config via SD)
     int  _serverPort = 8080;             // Porta do bridge na VPS
     char _audioEndpoint[128] = "/api/neon/audio";
     char _pollEndpoint[128] = "/api/neon/poll";
