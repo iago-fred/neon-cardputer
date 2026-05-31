@@ -33,7 +33,6 @@
 #include "Config.h"
 #include "Display.h"
 #include "AudioManager.h"
-#include "Network.h"
 #include "UI.h"
 #include "Avatar.h"
 #include "Version.h"
@@ -55,7 +54,7 @@
 ConfigManager   config;
 DisplayManager  display(&config);
 AudioManager    audio(AUDIO_SAMPLE_RATE, AUDIO_BITS, AUDIO_CHANNELS);
-NetworkManager  network(&config);
+
 UIManager       ui(&display, &config);
 Avatar          avatar(&display);
 OTAUpdateManager ota;
@@ -196,7 +195,12 @@ void loop() {
         display.wake();
     }
     
-    network.update();
+    // Reconecta WiFi se caiu (a cada 30s)
+    static uint32_t lastReconnect = 0;
+    if (WiFi.status() != WL_CONNECTED && millis() - lastReconnect > 30000) {
+        lastReconnect = millis();
+        WiFi.reconnect();
+    }
     ui.update();
     avatar.update();
     
