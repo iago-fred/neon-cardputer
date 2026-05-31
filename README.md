@@ -28,19 +28,21 @@ Widget físico com **M5CardPuter** para interagir com a assistente Neon (OpenCla
 
 ```
 neon-cardputer/
-├── firmware/          # Código do M5CardPuter (PlatformIO)
+├── firmware/
 │   ├── platformio.ini
-│   └── src/
-│       ├── main.cpp        # Loop principal
-│       ├── Config.h        # ConfigManager (WiFi, server, settings)
-│       ├── Display.h       # DisplayManager (tela)
-│       ├── Avatar.h        # Avatar Neon (emoções desenhadas)
-│       ├── UI.h            # UIManager (telas, menu, navegação)
-│       ├── AudioManager.h  # I2S mic + speaker
-│       └── Network.h       # HTTP/WS client
+│   └── neon-cardputer/     ← Pasta compatível com Arduino IDE
+│       ├── neon-cardputer.ino
+│       ├── Config.h
+│       ├── Display.h
+│       ├── Avatar.h
+│       ├── UI.h
+│       ├── AudioManager.h
+│       ├── Network.h
+│       ├── Version.h
+│       └── OTAUpdate.h
 ├── tools/
 │   └── neon_bridge.py      # Bridge HTTP na VPS
-├── assets/                 # Placeholder para assets
+├── SD_CARD_TEMPLATE/       # Template para configuração via SD
 └── architecture/
     └── README.md           # Documentação completa
 ```
@@ -50,7 +52,7 @@ neon-cardputer/
 ```
 Usuário aperta Botão A
   → CardPuter grava áudio (I2S, WAV)
-  → POST /api/neon/audio (HTTP/HTTPS)
+  → POST /api/neon/audio (HTTP)
   → Bridge na VPS transcreve com Whisper
   → Neon processa comando
   → Retorna JSON: {text, emotion, tts_url}
@@ -60,17 +62,63 @@ Usuário aperta Botão A
 
 ## Dev Setup
 
-1. Instalar **PlatformIO** (VS Code extension ou CLI)
-2. Conectar M5CardPuter via USB
-3. Compilar e upload:
-   ```bash
-   cd firmware
-   pio run --target upload
-   ```
-4. Bridge na VPS:
-   ```bash
-   python3 tools/neon_bridge.py --port 8080
-   ```
+### Opção A — Arduino IDE (recomendado pra Windows)
+
+1. **Instalar suporte ESP32:**
+   - **Arquivo > Preferências**
+   - Em "URLs adicionais para gerenciadores de placas", colar:
+     ```
+     https://espressif.github.io/arduino-esp32/package_esp32_index.json
+     ```
+
+2. **Instalar placa:** **Ferramentas > Placa > Gerenciador de Placas**
+   - Buscar `ESP32` → instalar **"ESP32 by Espressif Systems"**
+
+3. **Instalar bibliotecas (Ctrl+Shift+I):**
+
+   | Biblioteca | Buscar por |
+   |---|---|
+   | `M5CardPuter` by M5Stack | M5CardPuter |
+   | `M5GFX` by M5Stack | M5GFX |
+   | `ArduinoJson` by Benoit Blanchon | ArduinoJson |
+   | `WiFiManager` by tzapu | WiFiManager |
+   | `ESP8266Audio` by Earle F. Philhower | ESP8266Audio |
+
+4. **Configurar a placa:**
+   - **Ferramentas > Placa > ESP32 Arduino → ESP32S3 Dev Module**
+   - USB CDC On Boot: **Enabled**
+   - Flash Mode: **QIO**
+   - Flash Size: **16MB (128Mb)**
+   - Partition Scheme: **16MB Flash (3MB APP/9.9MB FATFS)**
+   - PSRAM: **OPI PSRAM**
+   - Upload Speed: **921600**
+
+5. **Abrir e enviar:**
+   - Abrir `firmware/neon-cardputer/neon-cardputer.ino`
+   - Conectar M5CardPuter via USB-C
+   - Selecionar porta em **Ferramentas > Porta**
+   - Clicar **➡️ Upload**
+
+### Opção B — PlatformIO (VS Code / CLI)
+
+```bash
+cd firmware
+
+# Se o board 'm5stack-cardputer' não for reconhecido:
+#   pio platform update espressif32
+# Ou use o fallback:
+#   pio run -e m5stack-cardputer-legacy
+
+pio run --target upload
+```
+
+### Bridge na VPS
+
+```bash
+python3 tools/neon_bridge.py --port 8080
+```
+
+(O bridge já está rodando na VPS, porta 8080 — só precisa configurar o IP no config.json do SD card.)
 
 ## Próximos passos
 
