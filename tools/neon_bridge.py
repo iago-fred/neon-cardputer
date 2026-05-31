@@ -107,7 +107,7 @@ def process_command(text: str) -> dict:
         return {
             "type": "chat_response",
             "text": "Hoje é domingo — dia de descansar! Não tem compromisso no calendário ainda. Quer que eu veja algo específico?",
-            "emotion": "idle",
+            "reaction": "idle",
             "tts_url": "",
             "menu_action": "menu:dia"
         }
@@ -116,7 +116,7 @@ def process_command(text: str) -> dict:
         return {
             "type": "chat_response",
             "text": "Salvador hoje: 25°C com sol, máxima de 32°C. Pode ter pancada de chuva à tarde — leva o guarda-chuva se for sair! 🌤️☂️",
-            "emotion": "happy",
+            "reaction": "happy",
             "tts_url": "",
             "menu_action": None
         }
@@ -125,7 +125,7 @@ def process_command(text: str) -> dict:
         return {
             "type": "chat_response",
             "text": "Por nada! Tô aqui pra isso 💙👻",
-            "emotion": "happy",
+            "reaction": "happy",
             "tts_url": "",
             "menu_action": None
         }
@@ -134,7 +134,7 @@ def process_command(text: str) -> dict:
         return {
             "type": "chat_response",
             "text": "Fala, Iago! 👻 Tudo bem? Tava aqui de boa, só esperando você falar comigo 💙",
-            "emotion": "happy",
+            "reaction": "happy",
             "tts_url": "",
             "menu_action": None
         }
@@ -143,7 +143,7 @@ def process_command(text: str) -> dict:
         return {
             "type": "chat_response",
             "text": "Configurações: som ativado, brilho 100%, WiFi conectado. Tudo ok por aqui!",
-            "emotion": "idle",
+            "reaction": "idle",
             "tts_url": "",
             "menu_action": "menu:config"
         }
@@ -152,7 +152,7 @@ def process_command(text: str) -> dict:
     return {
         "type": "chat_response",
         "text": f"Entendi! Você disse: \"{text}\". Ainda tô aprendendo comandos de voz, mas já registrei. Quer tentar de novo?",
-        "emotion": "thinking",
+        "reaction": "thinking",
         "tts_url": "",
         "menu_action": None
     }
@@ -196,6 +196,8 @@ class NeonBridgeHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/api/neon/audio':
             self._handle_audio()
+        elif self.path == '/api/neon/push':
+            self._handle_push()
         else:
             self._send_json(404, {"error": "not found"})
     
@@ -263,6 +265,24 @@ class NeonBridgeHandler(BaseHTTPRequestHandler):
         
         return body  # fallback: usa body inteiro
     
+    def _handle_push(self):
+        """Recebe push notification de dentro do OpenClaw."""
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length == 0:
+            self._send_json(400, {"error": "empty body"})
+            return
+        
+        body = self.rfile.read(content_length)
+        try:
+            data = json.loads(body)
+            text = data.get('text', '')
+            reaction = data.get('reaction', 'surprised')
+            tts = data.get('tts', '')
+            push_notification(text, reaction, tts)
+            self._send_json(200, {"status": "ok", "queued": True})
+        except json.JSONDecodeError:
+            self._send_json(400, {"error": "invalid JSON"})
+    
     def _send_json(self, status: int, data: dict):
         body = json.dumps(data, ensure_ascii=False).encode()
         self.send_response(status)
@@ -293,7 +313,7 @@ class NeonBridgeHandler(BaseHTTPRequestHandler):
 # ============================================================
 # Push Notification API
 # ============================================================
-def push_notification(text: str, emotion: str = "surprised", tts_text: str = ""):
+def push_notification(text: str, reaction: str = "surprised", tts_text: str = ""):
     """
     Adiciona notificação na fila para o CardPuter pegar no próximo poll.
     Usar de dentro do OpenClaw quando quiser mandar algo pro dispositivo.
@@ -305,7 +325,7 @@ def push_notification(text: str, emotion: str = "surprised", tts_text: str = "")
         "notify": True,
         "id": notification_id,
         "text": text,
-        "emotion": emotion,
+        "reaction": reaction,
         "timestamp": time.time()
     }
     
