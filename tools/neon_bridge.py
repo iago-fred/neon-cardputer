@@ -28,11 +28,19 @@ BOT_TOKEN = ""  # Preenchido na inicialização
 # ── Utils ────────────────────────────────────────────────────────────────────
 
 def load_gateway_token():
-    """Lê o token do Gateway do openclaw.json"""
+    """Lê o token do Gateway (env var ou openclaw.json)"""
+    token = os.environ.get("OPENCLAW_GATEWAY_TOKEN", "")
+    if token:
+        return token
     try:
         with open(GATEWAY_TOKEN_FILE) as f:
             config = json.load(f)
-        return config.get("gateway", {}).get("auth", {}).get("token", "")
+        raw = config.get("gateway", {}).get("auth", {}).get("token", "")
+        # Se for placeholder ${VAR}, tenta extrair nome
+        if raw.startswith("${") and raw.endswith("}"):
+            var_name = raw[2:-1]
+            return os.environ.get(var_name, "")
+        return raw
     except Exception as e:
         print(f"[Bridge] Erro ao ler token: {e}")
         return ""
@@ -110,18 +118,32 @@ def send_telegram_message(text):
         return {"error": str(e)}
 
 
+CARD_MESSAGES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cardputer_messages.jsonl")
+
+def save_cardputer_message(text):
+    """Salva mensagem do Cardputer em arquivo JSONL pra um cron processar"""
+    try:
+        entry = json.dumps({
+            "text": text,
+            "timestamp": time.time(),
+            "processed": False
+        }, ensure_ascii=False)
+        with open(CARD_MESSAGES_FILE, "a") as f:
+            f.write(entry + "\n")
+        return True
+    except Exception as e:
+        print(f"[Bridge] Erro ao salvar mensagem: {e}")
+        return False
+
 def inject_cardputer_message(text):
-    """Injeta a mensagem do Cardputer na sessão do Telegram"""
-    # Envia a mensagem pelo Bot API primeiro (pra aparecer visualmente no chat)
+    """Injeta a mensagem do Cardputer"""
+    # Envia pro Telegram visualmente
     send_telegram_message(text)
     
-    # Depois injeta na sessão do OpenClaw pra Neon ver
-    # Usando sessions_send para simular uma mensagem do usuário
-    result = invoke_gateway_tool("sessions_send", {
-        "sessionKey": "agent:main:telegram:direct:8829697706",
-        "message": f"[Cardputer] {text}"
-    })
-    return result
+    # Salva pra ser processada pelo cron
+    save_cardputer_message(text)
+    
+    return {"status": "saved"}
 
 
 # ── HTTP Server ──────────────────────────────────────────────────────────────
@@ -132,10 +154,20 @@ class BridgeHandler(BaseHTTPRequestHandler):
         body = json.dumps(data, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._cors_headers()
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+    
+    def _cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._cors_headers()
+        self.end_headers()
     
     def do_GET(self):
         if self.path == "/api/neon/ping":
