@@ -171,6 +171,9 @@ void carregarConfigTelegram(String conteudoJson) {
     }
 }
 
+// ── Forward declarations ───────────────────────────────────────────────────
+void enviarMensagemTelegram(String mensagem);
+
 // ── Enviar pra Bridge ───────────────────────────────────────────────────────
 
 void enviarParaBridge(String mensagem) {
@@ -454,21 +457,16 @@ void iniciarChatTelegram(String conteudoJson) {
                     }
                 }
 
-                // Seta pra cima: scroll pra trás (mensagens mais antigas)
-                if (status.up && histCount > 0) {
-                    if (histScroll < histCount - 1) histScroll++;
-                    atualizarTelaChat();
-                }
-
-                // Seta pra baixo: scroll pra frente (mensagens mais recentes)
-                if (status.down && histScroll > 0) {
-                    histScroll--;
-                    atualizarTelaChat();
-                }
-
                 // Delete/Backspace
                 if (status.del && textoInput.length() > 0) {
                     textoInput.remove(textoInput.length() - 1);
+                    atualizarTelaChat();
+                }
+
+                // Scroll: tab volta (antiga), fn+del avança (recente)
+                if (status.tab && histCount > 0) {
+                    if (histScroll < histCount - 1) histScroll++;
+                    else histScroll = 0;
                     atualizarTelaChat();
                 }
 
