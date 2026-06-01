@@ -5,33 +5,87 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
+String bridgeUrl = "";
 String botToken = "";
 String chatId = "";
 String textoInput = "";
-String ultimaMensagemChat = "Bot iniciado! Digite algo...";
+String ultimaMensagemChat = "Neon ativa! Digite algo...";
 
-long ultimoUpdateId = 0;          // Controla para não ler a mesma mensagem duas vezes
-unsigned long ultimoCheckJson = 0; // Temporizador para não sobrecarregar o Telegram
+long ultimoUpdateId = 0;
+unsigned long ultimoCheckJson = 0;
+unsigned long ultimoWifiCheck = 0;
 
+// ── Escapar caracteres especiais pra JSON ──────────────────────────────────
+String escaparJson(String texto) {
+    texto.replace("\\", "\\\\");
+    texto.replace("\"", "\\\"");
+    texto.replace("\n", "\\n");
+    texto.replace("\r", "\\r");
+    texto.replace("\t", "\\t");
+    return texto;
+}
+
+// ── Carregar config do JSON ────────────────────────────────────────────────
 void carregarConfigTelegram(String conteudoJson) {
-    int tokenParam = conteudoJson.indexOf("\"token\"");
-    int chatParam = conteudoJson.indexOf("\"chat_id\"");
+    // Bridge URL (novo)
+    int bridgeParam = conteudoJson.indexOf("\"bridge_url\"");
+    if (bridgeParam != -1) {
+        int bridgeInicio = conteudoJson.indexOf("\"", bridgeParam + 12) + 1;
+        int bridgeFim = conteudoJson.indexOf("\"", bridgeInicio);
+        bridgeUrl = conteudoJson.substring(bridgeInicio, bridgeFim);
+        bridgeUrl.trim();
+    }
 
-    if (tokenParam != -1 && chatParam != -1) {
+    // Bot token (fallback)
+    int tokenParam = conteudoJson.indexOf("\"token\"");
+    if (tokenParam != -1) {
         int tokenInicio = conteudoJson.indexOf("\"", tokenParam + 7) + 1;
         int tokenFim = conteudoJson.indexOf("\"", tokenInicio);
         botToken = conteudoJson.substring(tokenInicio, tokenFim);
+        botToken.trim();
+    }
 
+    // Chat ID (fallback)
+    int chatParam = conteudoJson.indexOf("\"chat_id\"");
+    if (chatParam != -1) {
         int chatInicio = conteudoJson.indexOf("\"", chatParam + 9) + 1;
         int chatFim = conteudoJson.indexOf("\"", chatInicio);
         chatId = conteudoJson.substring(chatInicio, chatFim);
-
-        botToken.trim();
         chatId.trim();
     }
 }
 
-void enviarMensagemTelegram(String mensaje) {
+// ── Enviar mensagem pra Neon Bridge ────────────────────────────────────────
+void enviarParaBridge(String mensagem) {
+    if (bridgeUrl == "") {
+        // Fallback: manda direto pro Telegram (só visual, Neon não vê)
+        if (botToken != "" && chatId != "") {
+            enviarMensagemTelegram(mensagem);
+        }
+        return;
+    }
+
+    WiFiClientSecure cliente;
+    cliente.setInsecure();
+
+    HTTPClient http;
+    http.begin(cliente, bridgeUrl + "/api/neon/message");
+    http.addHeader("Content-Type", "application/json");
+
+    String textoEscapado = escaparJson(mensagem);
+    String payload = "{\"text\":\"" + textoEscapado + "\"}";
+    int httpCode = http.POST(payload);
+
+    if (httpCode <= 0 && botToken != "" && chatId != "") {
+        // Se bridge falhou, tenta fallback direto no Telegram
+        enviarMensagemTelegram(mensagem);
+    }
+
+    http.end();
+}
+
+// ── Enviar mensagem direto pro Telegram (fallback) ─────────────────────────
+void enviarMensagemTelegram(String mensagem) {
     if (botToken == "" || chatId == "") return;
 
     WiFiClientSecure cliente;
@@ -43,20 +97,27 @@ void enviarMensagemTelegram(String mensaje) {
     http.begin(cliente, url);
     http.addHeader("Content-Type", "application/json");
 
-    String payload = "{\"chat_id\":\"" + chatId + "\",\"text\":\"" + mensaje + "\"}";
+    String textoEscapado = escaparJson(mensagem);
+    String payload = "{\"chat_id\":\"" + chatId + "\",\"text\":\"" + textoEscapado + "\"}";
     http.POST(payload);
     http.end();
 }
 
-// Nova Função: Busca mensagens enviadas do Telegram para o Bot
+// ── Receber mensagens do Telegram (getUpdates) ─────────────────────────────
 void receberMensagensTelegram() {
     if (botToken == "") return;
+
+    // Verifica se WiFi ainda tá conectado
+    if (WiFi.status() != WL_CONNECTED) {
+        // Tenta reconectar
+        WiFi.reconnect();
+        return;
+    }
 
     WiFiClientSecure cliente;
     cliente.setInsecure();
 
     HTTPClient http;
-    // Solicita apenas 1 nova mensagem por vez para economizar processamento
     String url = "https://api.telegram.org/bot" + botToken + "/getUpdates?limit=1";
     if (ultimoUpdateId > 0) {
         url += "&offset=" + String(ultimoUpdateId);
@@ -68,30 +129,35 @@ void receberMensagensTelegram() {
     if (httpCode == 200) {
         String resposta = http.getString();
         
+        // Procura update_id
         int upIdPos = resposta.indexOf("\"update_id\":");
         if (upIdPos != -1) {
             int upIdInicio = upIdPos + 12;
             int upIdFim = resposta.indexOf(",", upIdInicio);
             String upIdStr = resposta.substring(upIdInicio, upIdFim);
             
-            // Atualiza o ID para que o Telegram saiba que já lemos essa mensagem
             ultimoUpdateId = upIdStr.toInt() + 1;
 
-            // Extrai o texto enviado pelo usuário no Telegram
-            int textPos = resposta.indexOf("\"text\":\"");
-            if (textPos != -1) {
-                int textInicio = textPos + 8;
-                int textFim = resposta.indexOf("\"", textInicio);
-                String textoRecebido = resposta.substring(textInicio, textFim);
-                
-                // Atualiza o painel com a resposta que veio do celular
-                ultimaMensagemChat = "Telegram: " + textoRecebido;
+            // Extrai texto da mensagem
+            int msgPos = resposta.indexOf("\"message\":{\"");
+            if (msgPos == -1) msgPos = resposta.indexOf("\"message\":{");
+            if (msgPos != -1) {
+                int textPos = resposta.indexOf("\"text\":\"", msgPos);
+                if (textPos != -1) {
+                    int textInicio = textPos + 8;
+                    int textFim = resposta.indexOf("\"", textInicio);
+                    if (textFim != -1) {
+                        String textoRecebido = resposta.substring(textInicio, textFim);
+                        ultimaMensagemChat = "Neon: " + textoRecebido;
+                    }
+                }
             }
         }
     }
     http.end();
 }
 
+// ── Atualizar tela ─────────────────────────────────────────────────────────
 void atualizarTelaChat() {
     M5Cardputer.Display.fillScreen(TFT_BLACK);
     
@@ -100,44 +166,63 @@ void atualizarTelaChat() {
     M5Cardputer.Display.setCursor(5, 2);
     M5Cardputer.Display.setTextColor(TFT_WHITE);
     M5Cardputer.Display.setTextSize(1);
-    M5Cardputer.Display.print("Telegram Bot Chat");
+    M5Cardputer.Display.print("Neon Chat");
 
-    // Histórico / Resposta central
-    M5Cardputer.Display.setCursor(10, 40);
+    // Linha de separação
+    M5Cardputer.Display.drawLine(0, 16, 240, 16, TFT_DARKGREY);
+
+    // Última mensagem
+    M5Cardputer.Display.setCursor(10, 30);
     M5Cardputer.Display.setTextColor(TFT_GREEN);
+    M5Cardputer.Display.setTextSize(1);
     M5Cardputer.Display.print(ultimaMensagemChat.c_str());
 
-    // Campo de input cinza inferior
+    // Status WiFi
+    M5Cardputer.Display.setTextColor(TFT_WHITE);
+    M5Cardputer.Display.setCursor(5, 100);
+    M5Cardputer.Display.printf("WiFi: %s", WiFi.isConnected() ? "OK" : "---");
+
+    // Campo de input
     M5Cardputer.Display.fillRect(0, 115, 240, 20, TFT_DARKGREY);
     M5Cardputer.Display.setCursor(5, 120);
     M5Cardputer.Display.setTextColor(TFT_WHITE);
     M5Cardputer.Display.printf("> %s", textoInput.c_str());
 }
 
+// ── Loop principal do chat ─────────────────────────────────────────────────
 void iniciarChatTelegram(String conteudoJson) {
     carregarConfigTelegram(conteudoJson);
 
-    if (botToken == "" || chatId == "") {
+    if (botToken == "" && bridgeUrl == "") {
         M5Cardputer.Display.fillScreen(TFT_BLACK);
         M5Cardputer.Display.setTextColor(TFT_RED);
-        M5Cardputer.Display.println("Erro: Dados do Bot nao encontrados!");
+        M5Cardputer.Display.setCursor(10, 40);
+        M5Cardputer.Display.println("Erro: sem config!");
         return;
     }
 
-    enviarMensagemTelegram("M5Cardputer conectado e ativo!");
+    enviarParaBridge("Cardputer conectado!");
     atualizarTelaChat();
 
     while (true) {
         M5Cardputer.update();
 
-        // Checa novas mensagens vindas do Telegram a cada 3 segundos (3000ms)
+        // Checa WiFi a cada 30s
+        if (millis() - ultimoWifiCheck > 30000) {
+            if (WiFi.status() != WL_CONNECTED) {
+                WiFi.reconnect();
+            }
+            ultimoWifiCheck = millis();
+        }
+
+        // Checa novas mensagens do Telegram a cada 3 segundos
         if (millis() - ultimoCheckJson > 3000) {
             receberMensagensTelegram();
             atualizarTelaChat();
             ultimoCheckJson = millis();
         }
 
-        // Gerenciamento de digitação no teclado físico
+        // Teclado
         if (M5Cardputer.Keyboard.isChange()) {
             if (M5Cardputer.Keyboard.isPressed()) {
                 auto status = M5Cardputer.Keyboard.keysState();
@@ -151,9 +236,9 @@ void iniciarChatTelegram(String conteudoJson) {
                 }
 
                 if (status.enter && textoInput.length() > 0) {
-                    enviarMensagemTelegram(textoInput);
+                    enviarParaBridge(textoInput);
                     ultimaMensagemChat = "Voce: " + textoInput;
-                    textoInput = ""; 
+                    textoInput = "";
                 }
                 atualizarTelaChat();
             }
